@@ -16,7 +16,7 @@ peak=0
 while [ "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true" ]; do
   usage="$(docker stats --no-stream --format '{{.MemUsage}}' "$cid" | cut -d/ -f1 | tr -d ' ')"
   if [ -n "$usage" ]; then
-    bytes="$(numfmt --from=iec "$usage" 2>/dev/null || echo 0)"
+    bytes="$(numfmt --from=iec-i "$usage" 2>/dev/null || echo 0)"
     [ "$bytes" -gt "$peak" ] && peak="$bytes"
   fi
   sleep 1
@@ -36,4 +36,3 @@ if [ "$status" -ne 0 ]; then
   tail -n 100 "${report%.json}.log"
   exit "$status"
 fi
-

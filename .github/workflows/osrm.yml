@@ -18,15 +18,16 @@ jobs:
       - name: Build OSRM MLD graph
         run: |
           chmod +x scripts/*.sh
+          mkdir -p data/osrm
           scripts/run-container-benchmark.sh OSRM reports/osrm.json \
             --name osrm-benchmark \
             -v "$PWD/data:/data" \
             ghcr.io/project-osrm/osrm-backend:latest \
-            bash -lc 'osrm-extract -p /opt/car.lua /data/taiwan-latest.osm.pbf && osrm-partition /data/taiwan-latest.osrm && osrm-customize /data/taiwan-latest.osrm'
-          scripts/finalize-report.sh reports/osrm.json data/taiwan-latest.osm.pbf data
+            bash -lc 'osrm-extract -p /opt/car.lua --output /data/osrm/taiwan.osrm /data/taiwan-latest.osm.pbf && osrm-partition /data/osrm/taiwan.osrm && osrm-customize /data/osrm/taiwan.osrm'
+          scripts/finalize-report.sh reports/osrm.json data/taiwan-latest.osm.pbf data/osrm
       - name: Smoke route
         run: |
-          docker run -d --rm --name osrm-smoke -p 5000:5000 -v "$PWD/data:/data" ghcr.io/project-osrm/osrm-backend:latest osrm-routed --algorithm mld /data/taiwan-latest.osrm
+          docker run -d --rm --name osrm-smoke -p 5000:5000 -v "$PWD/data:/data" ghcr.io/project-osrm/osrm-backend:latest osrm-routed --algorithm mld /data/osrm/taiwan.osrm
           for i in {1..60}; do curl -fsS 'http://127.0.0.1:5000/route/v1/driving/120.3014,22.6273;120.6848,24.1477?overview=false' -o reports/osrm-route.json && break; sleep 1; done
           jq -e '.code == "Ok"' reports/osrm-route.json
           docker stop osrm-smoke
@@ -36,4 +37,3 @@ jobs:
           name: osrm-report
           path: reports/
           retention-days: 14
-

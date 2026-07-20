@@ -23,7 +23,7 @@ jobs:
             -v "$PWD/data:/data" \
             ghcr.io/valhalla/valhalla:latest \
             bash -lc 'valhalla_build_config --mjolnir-tile-dir /data/valhalla_tiles --mjolnir-tile-extract /data/valhalla_tiles.tar --mjolnir-concurrency 4 > /data/valhalla.json && valhalla_build_tiles -c /data/valhalla.json /data/taiwan-latest.osm.pbf && valhalla_build_extract -c /data/valhalla.json -v'
-          scripts/finalize-report.sh reports/valhalla.json data/taiwan-latest.osm.pbf data/valhalla_tiles
+          scripts/finalize-report.sh reports/valhalla.json data/taiwan-latest.osm.pbf data/valhalla_tiles.tar
       - name: Smoke route
         run: |
           docker run --rm -v "$PWD/data:/data" ghcr.io/valhalla/valhalla:latest valhalla_service /data/valhalla.json route '{"locations":[{"lat":22.6273,"lon":120.3014},{"lat":24.1477,"lon":120.6848}],"costing":"auto","directions_options":{"units":"kilometers"}}' > reports/valhalla-route.json
@@ -34,4 +34,3 @@ jobs:
           name: valhalla-report
           path: reports/
           retention-days: 14
-
