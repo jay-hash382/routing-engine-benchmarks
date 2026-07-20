@@ -14,11 +14,9 @@ started="$(date +%s)"
 docker start "$cid" >/dev/null
 peak=0
 while [ "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true" ]; do
-  usage="$(docker stats --no-stream --format '{{.MemUsage}}' "$cid" | cut -d/ -f1 | tr -d ' ')"
-  if [ -n "$usage" ]; then
-    bytes="$(numfmt --from=iec-i "$usage" 2>/dev/null || echo 0)"
-    [ "$bytes" -gt "$peak" ] && peak="$bytes"
-  fi
+  bytes="$(docker exec "$cid" sh -c 'cat /sys/fs/cgroup/memory.peak 2>/dev/null || cat /sys/fs/cgroup/memory.current 2>/dev/null || echo 0' 2>/dev/null || echo 0)"
+  [[ "$bytes" =~ ^[0-9]+$ ]] || bytes=0
+  [ "$bytes" -gt "$peak" ] && peak="$bytes"
   sleep 1
 done
 status="$(docker inspect -f '{{.State.ExitCode}}' "$cid")"
