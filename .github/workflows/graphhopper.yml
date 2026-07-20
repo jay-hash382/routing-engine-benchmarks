@@ -28,6 +28,12 @@ jobs:
             eclipse-temurin:21-jre \
             bash -lc 'java -Xms1g -Xmx12g -Ddw.graphhopper.datareader.file=/data/taiwan-latest.osm.pbf -jar /data/graphhopper.jar server /data/config.yml > /data/graphhopper.log 2>&1 & pid=$!; /data/wait-graphhopper.sh "$pid" /data/graphhopper.log'
           scripts/finalize-report.sh reports/graphhopper.json data/taiwan-latest.osm.pbf data/graphhopper
+      - name: Smoke route
+        run: |
+          docker run -d --rm --name graphhopper-smoke -p 8989:8989 -v "$PWD/data:/data" eclipse-temurin:21-jre bash -lc 'java -Xms512m -Xmx4g -jar /data/graphhopper.jar server /data/config.yml'
+          for i in {1..60}; do curl -fsS 'http://127.0.0.1:8989/route?point=22.6273,120.3014&point=24.1477,120.6848&profile=car&points_encoded=false' -o reports/graphhopper-route.json && break; sleep 1; done
+          jq -e '(.paths | length) > 0' reports/graphhopper-route.json
+          docker stop graphhopper-smoke
       - name: Upload report
         uses: actions/upload-artifact@v4
         if: always()
