@@ -1,0 +1,39 @@
+name: Benchmark OSRM MLD
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Taiwan OSM PBF
+        run: |
+          mkdir -p data reports
+          curl --fail --location --retry 3 -o data/taiwan-latest.osm.pbf https://download.geofabrik.de/asia/taiwan-latest.osm.pbf
+      - name: Build OSRM MLD graph
+        run: |
+          chmod +x scripts/*.sh
+          scripts/run-container-benchmark.sh OSRM reports/osrm.json \
+            --name osrm-benchmark \
+            -v "$PWD/data:/data" \
+            ghcr.io/project-osrm/osrm-backend:latest \
+            bash -lc 'osrm-extract -p /opt/car.lua /data/taiwan-latest.osm.pbf && osrm-partition /data/taiwan-latest.osrm && osrm-customize /data/taiwan-latest.osrm'
+          scripts/finalize-report.sh reports/osrm.json data/taiwan-latest.osm.pbf data
+      - name: Smoke route
+        run: |
+          docker run -d --rm --name osrm-smoke -p 5000:5000 -v "$PWD/data:/data" ghcr.io/project-osrm/osrm-backend:latest osrm-routed --algorithm mld /data/taiwan-latest.osrm
+          for i in {1..60}; do curl -fsS 'http://127.0.0.1:5000/route/v1/driving/120.3014,22.6273;120.6848,24.1477?overview=false' -o reports/osrm-route.json && break; sleep 1; done
+          jq -e '.code == "Ok"' reports/osrm-route.json
+          docker stop osrm-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: osrm-report
+          path: reports/
+          retention-days: 14
+

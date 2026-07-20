@@ -1,0 +1,37 @@
+name: Benchmark Valhalla
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Taiwan OSM PBF
+        run: |
+          mkdir -p data/valhalla_tiles reports
+          curl --fail --location --retry 3 -o data/taiwan-latest.osm.pbf https://download.geofabrik.de/asia/taiwan-latest.osm.pbf
+      - name: Build Valhalla graph
+        run: |
+          chmod +x scripts/*.sh
+          scripts/run-container-benchmark.sh Valhalla reports/valhalla.json \
+            --name valhalla-benchmark \
+            -v "$PWD/data:/data" \
+            ghcr.io/valhalla/valhalla:latest \
+            bash -lc 'valhalla_build_config --mjolnir-tile-dir /data/valhalla_tiles --mjolnir-tile-extract /data/valhalla_tiles.tar --mjolnir-concurrency 4 > /data/valhalla.json && valhalla_build_tiles -c /data/valhalla.json /data/taiwan-latest.osm.pbf && valhalla_build_extract -c /data/valhalla.json -v'
+          scripts/finalize-report.sh reports/valhalla.json data/taiwan-latest.osm.pbf data/valhalla_tiles
+      - name: Smoke route
+        run: |
+          docker run --rm -v "$PWD/data:/data" ghcr.io/valhalla/valhalla:latest valhalla_service /data/valhalla.json route '{"locations":[{"lat":22.6273,"lon":120.3014},{"lat":24.1477,"lon":120.6848}],"costing":"auto","directions_options":{"units":"kilometers"}}' > reports/valhalla-route.json
+          jq -e '.trip.status == 0' reports/valhalla-route.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: valhalla-report
+          path: reports/
+          retention-days: 14
+
