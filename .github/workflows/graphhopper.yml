@@ -16,7 +16,6 @@ jobs:
           mkdir -p data reports
           curl --fail --location --retry 3 -o data/taiwan-latest.osm.pbf https://download.geofabrik.de/asia/taiwan-latest.osm.pbf
           curl --fail --location --retry 3 -o data/graphhopper.jar https://repo1.maven.org/maven2/com/graphhopper/graphhopper-web/11.0/graphhopper-web-11.0.jar
-          curl --fail --location --retry 3 -o data/car.json https://raw.githubusercontent.com/graphhopper/graphhopper/11.x/core/src/main/resources/com/graphhopper/custom_models/car.json
           cp config/graphhopper.yml data/config.yml
       - name: Build GraphHopper graph
         run: |
@@ -36,4 +35,3 @@ jobs:
             reports/
             data/graphhopper.log
           retention-days: 14
-

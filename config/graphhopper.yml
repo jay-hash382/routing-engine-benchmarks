@@ -1,7 +1,6 @@
 graphhopper:
   datareader.file: /data/taiwan-latest.osm.pbf
   graph.location: /data/graphhopper
-  custom_models.directory: /data
   profiles:
     - name: car
       custom_model_files: [car.json]
