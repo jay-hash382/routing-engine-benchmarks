@@ -17,6 +17,8 @@ jobs:
           curl --fail --location --retry 3 -o data/taiwan-latest.osm.pbf https://download.geofabrik.de/asia/taiwan-latest.osm.pbf
           curl --fail --location --retry 3 -o data/graphhopper.jar https://repo1.maven.org/maven2/com/graphhopper/graphhopper-web/11.0/graphhopper-web-11.0.jar
           cp config/graphhopper.yml data/config.yml
+          cp scripts/wait-graphhopper.sh data/wait-graphhopper.sh
+          chmod +x data/wait-graphhopper.sh
       - name: Build GraphHopper graph
         run: |
           chmod +x scripts/*.sh
@@ -24,7 +26,7 @@ jobs:
             --name graphhopper-benchmark \
             -v "$PWD/data:/data" \
             eclipse-temurin:21-jre \
-            bash -lc 'java -Xms1g -Xmx12g -Ddw.graphhopper.datareader.file=/data/taiwan-latest.osm.pbf -jar /data/graphhopper.jar server /data/config.yml > /data/graphhopper.log 2>&1 & pid=$!; for i in $(seq 1 7200); do if (echo > /dev/tcp/127.0.0.1/8989) 2>/dev/null; then kill $pid; wait $pid || true; exit 0; fi; if ! kill -0 $pid 2>/dev/null; then cat /data/graphhopper.log; exit 1; fi; sleep 1; done; kill $pid; exit 124'
+            bash -lc 'java -Xms1g -Xmx12g -Ddw.graphhopper.datareader.file=/data/taiwan-latest.osm.pbf -jar /data/graphhopper.jar server /data/config.yml > /data/graphhopper.log 2>&1 & pid=$!; /data/wait-graphhopper.sh "$pid" /data/graphhopper.log'
           scripts/finalize-report.sh reports/graphhopper.json data/taiwan-latest.osm.pbf data/graphhopper
       - name: Upload report
         uses: actions/upload-artifact@v4
